@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Döviz Baba Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+:root {
+  --bg: #030303;
+  --s1: rgba(18, 18, 22, 0.45);
+  --s2: rgba(30, 30, 36, 0.6);
+  --b: rgba(255, 255, 255, 0.05);
+  --bh: rgba(255, 255, 255, 0.12);
+  --t: #f4f4f5;
+  --tm: #a1a1aa;
+  --td: #3f3f46;
+  --g: #10b981;
+  --gd: rgba(16, 185, 129, 0.12);
+  --r: #f43f5e;
+  --rd: rgba(244, 63, 94, 0.12);
+  --accent1: #6366f1;
+  --accent2: #a855f7;
+}
+
+body.light-theme {
+  --bg: #f8fafc;
+  --s1: rgba(255, 255, 255, 0.7);
+  --s2: rgba(241, 245, 249, 0.8);
+  --b: rgba(0, 0, 0, 0.1);
+  --bh: rgba(0, 0, 0, 0.18);
+  --t: #0f172a;
+  --tm: #64748b;
+  --td: #cbd5e1;
+  --g: #059669;
+  --gd: rgba(5, 150, 105, 0.1);
+  --r: #e11d48;
+  --rd: rgba(225, 29, 72, 0.1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--t);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Ambient animated background glows */
+body::before, body::after {
+  content: ''; position: fixed; border-radius: 50%; filter: blur(120px); z-index: -1; pointer-events: none; opacity: 0.5;
+}
+body::before { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%); }
+body::after { bottom: -10%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(16,185,129,0.05), transparent 70%); }
+
+#loading {
+  position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+  transition: opacity 0.6s ease-out, visibility 0.6s ease-out;
+}
+#loading.out { opacity: 0; visibility: hidden; }
+.ld-icon { font-size: 56px; animation: floatIcon 3s ease-in-out infinite; filter: drop-shadow(0 0 20px rgba(99,102,241,0.4)); }
+@keyframes floatIcon { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-12px) scale(1.05); } }
+.ld-label { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 4px; color: var(--tm); text-transform: uppercase; font-weight: 700; }
+.ld-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--td); margin-top: -12px; }
+.ld-bar { width: 220px; height: 3px; background: rgba(128,128,128,0.2); border-radius: 4px; overflow: hidden; position: relative; }
+.ld-fill { height: 100%; background: linear-gradient(90deg, var(--accent1), var(--accent2)); border-radius: 4px; animation: ldf 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@keyframes ldf { 0% { width: 0; } 50% { width: 65%; } 100% { width: 100%; } }
+
+.wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 40px 24px 80px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 24px; margin-bottom: 40px; border-bottom: 1px solid var(--b);
+  flex-wrap: wrap; gap: 20px;
+}
+.logo { display: flex; align-items: center; gap: 16px; }
+.logo-box {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15));
+  border: 1px solid rgba(168,85,247,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  box-shadow: 0 8px 24px rgba(99,102,241,0.2), inset 0 2px 0 rgba(255,255,255,0.1);
+}
+.logo h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(to right, var(--t), var(--tm)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.logo p { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--tm); letter-spacing: 2.5px; text-transform: uppercase; margin-top: 4px; }
+.header-r { display: flex; align-items: center; gap: 20px; }
+.theme-btn {
+  background: var(--b); border: 1px solid var(--bh); color: var(--t);
+  width: 36px; height: 36px; border-radius: 50%; display:flex; align-items:center; justify-content:center;
+  cursor: pointer; transition: all 0.3s;
+}
+.theme-btn:hover { background: var(--bh); transform: scale(1.05); }
+.live { display: flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 100px; padding: 6px 14px 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--g); letter-spacing: 1.5px; box-shadow: 0 0 12px rgba(16,185,129,0.1); }
+.dot { width: 8px; height: 8px; background: var(--g); border-radius: 50%; animation: blink 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; box-shadow: 0 0 8px var(--g); }
+@keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+#upd { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--tm); }
+
+.cpanel {
+  background: var(--s1); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--b); border-radius: 24px; padding: 32px; margin-bottom: 48px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.chead { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
+.ctitle h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;}
+.ctitle p { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--tm); letter-spacing: 1.5px; }
+.cstats { display: flex; gap: 24px; background: var(--b); padding: 12px 24px; border-radius: 16px; border: 1px solid var(--bh); }
+.cs { text-align: right; }
+.cs label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--tm); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.cs .v { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 800; }
+.cs .v.up { color: var(--g); text-shadow: 0 0 12px rgba(16,185,129,0.3); } 
+.cs .v.dn { color: var(--r); text-shadow: 0 0 12px rgba(244,63,94,0.3); } 
+.cs .v.eq { color: var(--t); }
+
+/* Layout for Chart + Converter */
+.c-layout { display: flex; gap: 32px; flex-wrap: wrap; }
+.c-main { flex: 7; min-width: 300px; display: flex; flex-direction: column; }
+.c-side { flex: 3; min-width: 250px; background: var(--s2); border-radius: 16px; padding: 24px; border: 1px solid var(--b); }
+
+.cbox { height: 260px; position: relative; margin-bottom: 16px; }
+
+/* Timeframes */
+.t-frames { display: flex; gap: 8px; justify-content: center; }
+.tf-btn {
+  background: transparent; border: 1px solid var(--bh); color: var(--tm);
+  padding: 6px 14px; border-radius: 100px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: all 0.2s;
+}
+.tf-btn:hover { background: var(--b); color: var(--t); }
+.tf-btn.active { background: var(--t); color: var(--bg); border-color: var(--t); font-weight: 700; }
+
+/* Converter */
+.conv-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--t); display: flex; justify-content: space-between;}
+.conv-row { margin-bottom: 16px; }
+.conv-row label { display: block; font-size: 11px; color: var(--tm); margin-bottom: 6px; text-transform: uppercase; font-family: 'JetBrains Mono'; }
+.conv-input {
+  width: 100%; background: var(--s1); border: 1px solid var(--bh); color: var(--t);
+  border-radius: 12px; padding: 12px 16px; font-size: 16px; font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; outline: none; transition: all 0.2s;
+}
+.conv-input:focus { border-color: var(--accent1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+
+.sh { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; margin-top: 10px; }
+.sh span { font-size: 12px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: var(--t); white-space: nowrap; }
+.sh hr { flex: 1; border: none; border-top: 1px solid var(--b); }
+
+.fbar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+.fb {
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px;
+  padding: 8px 18px; border-radius: 100px; border: 1px solid var(--b);
+  background: var(--b); color: var(--tm); cursor: pointer; transition: all 0.25s ease;
+  backdrop-filter: blur(8px);
+}
+.fb:hover { border-color: var(--bh); color: var(--t); background: var(--bh); transform: translateY(-1px); }
+.fb.on { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1)); border-color: rgba(168,85,247,0.4); color: var(--t); box-shadow: 0 4px 16px rgba(168,85,247,0.15); }
+
+#searchInput {
+  background: var(--s1); backdrop-filter: blur(8px);
+  border: 1px solid var(--b); border-radius: 100px; padding: 8px 18px;
+  color: var(--t); font-family: 'Inter', sans-serif; font-size: 13px;
+  outline: none; transition: border-color 0.3s, box-shadow 0.3s;
+  flex: 1; max-width: 320px; margin-left: auto;
+}
+#searchInput:focus { border-color: rgba(168,85,247,0.4); box-shadow: 0 0 12px rgba(168,85,247,0.15); }
+#searchInput::placeholder { color: var(--tm); }
+
+.s-select {
+  background: var(--s1); border: 1px solid var(--b); color: var(--t);
+  border-radius: 100px; padding: 8px 16px; font-family: 'Inter', sans-serif; font-size: 12px;
+  outline: none; cursor: pointer;
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 48px; }
+
+.card {
+  background: var(--s1); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--b); border-radius: 20px; padding: 22px; cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%); pointer-events: none; }
+.card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 20px 20px 0 0; background: var(--b); transition: background 0.4s; }
+.card.up::after { background: var(--g); box-shadow: 0 0 12px rgba(16,185,129,0.4); } 
+.card.dn::after { background: var(--r); box-shadow: 0 0 12px rgba(244,63,94,0.4); }
+.card:hover { transform: translateY(-4px) scale(1.01); border-color: var(--bh); box-shadow: 0 16px 40px rgba(0,0,0,0.3); z-index: 2; }
+.card.sel { border-color: rgba(168,85,247,0.4); box-shadow: 0 0 0 1px rgba(168,85,247,0.2), 0 12px 32px rgba(168,85,247,0.1); background: var(--s2); }
+
+.ctop { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.csym { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--tm); background: rgba(0,0,0,0.1); border: 1px solid var(--b); border-radius: 6px; padding: 4px 10px; letter-spacing: 0.5px; }
+.carr { font-size: 18px; font-weight: 800; display:flex; align-items:center; gap: 8px; }
+.carr button.fav { background:transparent; border:none; cursor:pointer; font-size:16px; color: var(--tm); transition:all 0.2s; opacity: 0.5; }
+.carr button.fav:hover { transform: scale(1.2); opacity: 1; }
+.carr button.fav.on { color: #f59e0b; opacity: 1; text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+.carr.up span { color: var(--g); text-shadow: 0 0 8px rgba(16,185,129,0.4); } 
+.carr.dn span { color: var(--r); text-shadow: 0 0 8px rgba(244,63,94,0.4); } 
+.carr.eq span { color: var(--td); }
+
+.cname { font-size: 14px; font-weight: 600; color: var(--t); margin-bottom: 16px; line-height: 1.4; opacity: 0.95; }
+
+.cprice { display: grid; gap: 12px; background: var(--b); padding: 12px; border-radius: 12px; border: 1px solid var(--bh); }
+.pb { display: flex; justify-content: space-between; align-items: center; }
+.pb label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--tm); letter-spacing: 2px; text-transform: uppercase; }
+.pb .pv { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--t); letter-spacing: -0.5px; }
+.pv.fu { animation: fu 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+.pv.fd { animation: fd 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes fu { 0%, 100% { color: var(--t); text-shadow: none; } 30% { color: var(--g); text-shadow: 0 0 12px rgba(16,185,129,0.5); transform: translateY(-2px); } }
+@keyframes fd { 0%, 100% { color: var(--t); text-shadow: none; } 30% { color: var(--r); text-shadow: 0 0 12px rgba(244,63,94,0.5); transform: translateY(2px); } }
+
+.spark { margin-top: 16px; height: 44px; opacity: 0.85; transition: opacity 0.3s; }
+.card:hover .spark { opacity: 1; }
+.spark canvas { width: 100% !important; height: 44px !important; }
+
+.empty { grid-column: 1 / -1; text-align: center; padding: 48px; color: var(--tm); font-size: 13px; font-family: 'JetBrains Mono', monospace; background: var(--b); border-radius: 16px; border: 1px dashed var(--bh); }
+</style>
+</head>
+<body class="dark-theme">
+
+<div id="loading">
+  <div class="ld-icon">💱</div>
+  <div class="ld-label">Veriler Çekiliyor</div>
+  <div class="ld-sub">Finansal altyapı hazırlanıyor…</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-box">💱</div>
+      <div>
+        <h1>Döviz</h1>
+        <p>Gelişmiş Finans Paneli</p>
+      </div>
+    </div>
+    <div class="header-r">
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Karanlık/Aydınlık Mod">&#9728;</button>
+      <div class="live"><div class="dot"></div>CANLI</div>
+      <div id="upd">—</div>
+    </div>
+  </header>
+
+  <div class="cpanel">
+    <div class="chead">
+      <div class="ctitle">
+        <h2><span id="cname">Bir kur seçin</span> <button class="carr fav" style="display:none;" id="mainFavBtn">⭐</button></h2>
+        <p id="csub">Tarihsel Değişim Grafiği</p>
+      </div>
+      <div class="cstats">
+        <div class="cs"><label>Güncel Fiyat</label><div class="v eq" id="calis">—</div></div>
+        <div class="cs"><label>Değişim</label><div class="v eq" id="cchg">—</div></div>
+      </div>
+    </div>
+    <div class="c-layout">
+      <div class="c-main">
+        <div class="cbox"><canvas id="mc"></canvas></div>
+        <div class="t-frames">
+          <button class="tf-btn" data-days="7" onclick="setDays(7)">7 Gün</button>
+          <button class="tf-btn active" data-days="30" onclick="setDays(30)">30 Gün</button>
+          <button class="tf-btn" data-days="90" onclick="setDays(90)">3 Aylık</button>
+          <button class="tf-btn" data-days="365" onclick="setDays(365)">1 Yıllık</button>
+        </div>
+      </div>
+      <div class="c-side">
+        <div class="conv-title">Hızlı Çevirici <span style="color:var(--accent1)" id="cvTo">...</span></div>
+        <div class="conv-row">
+          <label>Tutar (TRY)</label>
+          <input type="number" class="conv-input" id="cvTRY" placeholder="0.00" oninput="cvCalc(true)">
+        </div>
+        <div class="conv-row" style="margin-bottom:0;">
+          <label>Karşılık (<span id="cvRate">...</span>)</label>
+          <input type="number" class="conv-input" id="cvCUR" placeholder="0.00" oninput="cvCalc(false)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><span>Döviz Kurları</span><hr></div>
+  <div class="fbar">
+    <button class="fb on" onclick="setF('all')">Tümü</button>
+    <button class="fb" onclick="setF('fav')">⭐ Favoriler</button>
+    <button class="fb" onclick="setF('USD')">USD</button>
+    <button class="fb" onclick="setF('EUR')">EUR</button>
+    
+    <select id="sortSelect" class="s-select" onchange="runSearch()" style="margin-left:auto;">
+      <option value="alpha">Alfabetik Sırala</option>
+      <option value="gain">En Çok Yükselenler</option>
+      <option value="loss">En Çok Düşenler</option>
+    </select>
+    
+    <input type="text" id="searchInput" placeholder="Kur Ara (Örn. GBP, JPY)..." oninput="runSearch()" autocomplete="off" style="margin-left: 8px;">
+  </div>
+  <div class="grid" id="cgrid"><div class="empty">Yükleniyor…</div></div>
+</div>
+
+<script>
+const NAMES = {
+  'USD':'ABD Doları','EUR':'Euro','GBP':'İngiliz Sterlini',
+  'CHF':'İsviçre Frangı','CAD':'Kanada Doları',
+  'AUD':'Avustralya Doları','JPY':'Japon Yeni','NOK':'Norveç Kronu',
+  'BGN':'Bulgar Levası', 'RON':'Rumen Leyi', 'RUB':'Rus Rublesi',
+  'SAR':'Suudi Riyali', 'KWD':'Kuveyt Dinarı', 'AED':'BAE Dirhemi'
+};
+
+let allData={}, hist={}, sel=null, curFilter='all', DOVIZ_KEYS=[], favs=[];
+let mainChart=null, sparkCharts={};
+let currentDays = 30;
+
+function initThemeAndFavs() {
+    const th = localStorage.getItem('theme');
+    if(th === 'light') {
+        document.body.classList.add('light-theme');
+        document.getElementById('themeBtn').innerHTML = '&#9789;'; // moon
+    }
+    const fv = localStorage.getItem('favs');
+    if(fv) favs = JSON.parse(fv);
+}
+
+function toggleTheme() {
+    const isL = document.body.classList.toggle('light-theme');
+    localStorage.setItem('theme', isL ? 'light' : 'dark');
+    document.getElementById('themeBtn').innerHTML = isL ? '&#9789;' : '&#9728;';
+}
+
+function toggleFav(ev, key) {
+    ev.stopPropagation();
+    if(favs.includes(key)) favs = favs.filter(x => x !== key);
+    else favs.push(key);
+    localStorage.setItem('favs', JSON.stringify(favs));
+    
+    if(sel === key) document.getElementById('mainFavBtn').className = `carr fav ${favs.includes(key)?'on':''}`;
+    
+    if(curFilter === 'fav') runSearch();
+    else {
+        const btn = document.querySelector(`.card[data-key="${key}"] button.fav`);
+        if(btn) btn.className = `fav ${favs.includes(key)?'on':''}`;
+    }
+}
+
+function fmt(n){
+  if(!n && n!==0) return '—';
+  if(n < 0.1) return n.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:5});
+  return n.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:4});
+}
+function dir(a,b){ if(b==null) return 'eq'; return a>b?'up':a<b?'dn':'eq'; }
+function arrow(d){ return d==='up'?'↑':d==='dn'?'↓':'—'; }
+function sparkId(k){ return 'sp_'+k.replace(/[^a-z0-9]/gi,'_'); }
+
+function cvCalc(fromTRY) {
+    if(!sel || !allData[sel]) return;
+    const rate = allData[sel].a;
+    const vT = document.getElementById('cvTRY').value;
+    const vC = document.getElementById('cvCUR').value;
+    
+    if(fromTRY) {
+        if(!vT) document.getElementById('cvCUR').value = '';
+        else document.getElementById('cvCUR').value = (parseFloat(vT) / rate).toFixed(2);
+    } else {
+        if(!vC) document.getElementById('cvTRY').value = '';
+        else document.getElementById('cvTRY').value = (parseFloat(vC) * rate).toFixed(2);
+    }
+}
+
+function initChart(){
+  const ctx = document.getElementById('mc').getContext('2d');
+  mainChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:[], datasets:[
+      {label:'Fiyat',data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',borderWidth:2,pointRadius:0,pointHoverRadius:5,fill:true,tension:0.4}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:400},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'rgba(15,23,42,0.9)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,
+          titleColor:'#cbd5e1',bodyColor:'#f8fafc',padding:12,
+          titleFont:{family:'JetBrains Mono',size:11},bodyFont:{family:'JetBrains Mono',size:13},
+          callbacks:{label:c=>`  ${fmt(c.parsed.y)} ₺`}
+        }
+      },
+      scales:{
+        x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},maxTicksLimit:8}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},callback:v=>fmt(v)},position:'right'}
+      }
+    }
+  });
+}
+
+function updateMainChart(key){
+  if(!mainChart||!hist[key]||!hist[key].length) return;
+  const h = hist[key];
+  mainChart.data.labels = h.map(d=>d.t);
+  
+  const ctx = mainChart.ctx;
+  const last=h[h.length-1], first=h[0];
+  const chg = first&&first.a ? ((last.a-first.a)/first.a*100) : 0;
+  const d = chg>0?'up':chg<0?'dn':'eq';
+  const cColor = chg>0 ? '#10b981' : chg<0 ? '#f43f5e' : '#6366f1';
+  let grad = ctx.createLinearGradient(0,0,0,260);
+  grad.addColorStop(0, chg>0 ? 'rgba(16,185,129,0.2)' : chg<0 ? 'rgba(244,63,94,0.2)' : 'rgba(99,102,241,0.2)');
+  grad.addColorStop(1, 'transparent');
+  
+  mainChart.data.datasets[0].data = h.map(d=>d.a);
+  mainChart.data.datasets[0].borderColor = cColor;
+  mainChart.data.datasets[0].backgroundColor = grad;
+  mainChart.update('active');
+
+  document.getElementById('cname').textContent = key;
+  const mFav = document.getElementById('mainFavBtn');
+  mFav.style.display = 'inline-block';
+  mFav.className = `carr fav ${favs.includes(key)?'on':''}`;
+  mFav.onclick = (e) => toggleFav(e, key);
+
+  document.getElementById('calis').className=`v ${d}`;
+  document.getElementById('calis').textContent = fmt(last.a) + ' ₺';
+  const ce=document.getElementById('cchg');
+  ce.className=`v ${d}`;
+  ce.textContent = (chg>=0?'+':'')+chg.toFixed(2)+'%';
+  
+  // Converter updates
+  document.getElementById('cvTo').textContent = key;
+  document.getElementById('cvRate').textContent = key;
+  cvCalc(true); // default recalc
+}
+
+function drawSpark(key){
+  const id=sparkId(key), canvas=document.getElementById(id);
+  if(!canvas) return;
+  const h=hist[key]||[];
+  if(h.length<2) return;
+  const up=h[h.length-1].a >= h[0].a;
+  const col=up?'#10b981':'#f43f5e';
+  const bg=up?'rgba(16,185,129,0.1)':'rgba(244,63,94,0.1)';
+  if(sparkCharts[id]){
+    sparkCharts[id].data.labels=h.map((_,i)=>i);
+    sparkCharts[id].data.datasets[0].data=h.map(x=>x.a);
+    sparkCharts[id].data.datasets[0].borderColor=col;
+    sparkCharts[id].data.datasets[0].backgroundColor=bg;
+    sparkCharts[id].update('none'); return;
+  }
+  sparkCharts[id]=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{labels:h.map((_,i)=>i),datasets:[{data:h.map(x=>x.a),borderColor:col,backgroundColor:bg,borderWidth:1.5,pointRadius:0,fill:true,tension:0.3}]},
+    options:{responsive:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
+  });
+}
+
+function selectCard(key){
+  sel=key;
+  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('sel',c.dataset.key===key));
+  updateMainChart(key);
+}
+
+function makeCard(key,val){
+  const id=sparkId(key), d=val.ad||'eq';
+  const isF = favs.includes(key);
+  const div=document.createElement('div');
+  div.className=`card ${d}`; div.dataset.key=key;
+  div.onclick=()=>selectCard(key);
+  div.innerHTML=`
+    <div class="ctop">
+      <span class="csym">${key} <span style="font-size:10px;font-weight:400;color:var(--tm);margin-left:4px">${NAMES[key]||''}</span></span>
+      <div class="carr ${d}"><button class="fav ${isF?'on':''}" onclick="toggleFav(event, '${key}')">⭐</button> <span class="arrst">${arrow(d)}</span></div>
+    </div>
+    <div class="cprice">
+      <div class="pb"><span class="pv" id="a_${id}">${fmt(val.a)}</span><label style="margin:0;">TRY</label></div>
+    </div>
+    <div class="spark"><canvas id="${id}" width="240" height="44"></canvas></div>`;
+  return div;
+}
+
+function runSearch() {
+  const el = document.getElementById('searchInput');
+  const sortS = document.getElementById('sortSelect').value;
+  let q = '';
+  if(el) q = el.value.toLowerCase().trim();
+  
+  let keys = DOVIZ_KEYS.filter(k => allData[k] && 
+    (curFilter === 'all' || (curFilter === 'fav' && favs.includes(k)) || k === curFilter) &&
+    (k.toLowerCase().includes(q) || (NAMES[k] && NAMES[k].toLowerCase().includes(q)))
+  );
+
+  // Sorting
+  keys.sort((k1, k2) => {
+      if(sortS === 'alpha') return k1.localeCompare(k2);
+      
+      const v1 = hist[k1], v2 = hist[k2];
+      const g1 = (v1 && v1.length) ? (v1[v1.length-1].a - v1[0].a)/v1[0].a : 0;
+      const g2 = (v2 && v2.length) ? (v2[v2.length-1].a - v2[0].a)/v2[0].a : 0;
+      
+      if(sortS === 'gain') return g2 - g1;
+      return g1 - g2; // loss
+  });
+
+  rebuildGrid('cgrid', keys);
+}
+
+function setF(f){
+  curFilter=f;
+  document.querySelectorAll('.fb').forEach(b=>{
+    const lbl=b.textContent.trim().replace('⭐ ', '');
+    b.classList.toggle('on', f==='all'?lbl==='Tümü':f==='fav'?lbl==='Favoriler':lbl===f);
+  });
+  runSearch();
+}
+
+async function setDays(d) {
+    if(currentDays === d) return;
+    currentDays = d;
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.days)===d));
+    document.getElementById('loading').classList.remove('out');
+    await loadData(d);
+}
+
+function rebuildGrid(gridId,keys){
+  const grid=document.getElementById(gridId);
+  if(!grid) return;
+  grid.querySelectorAll('.card').forEach(c=>{if(!keys.includes(c.dataset.key))c.remove();});
+  if(!keys.length){
+      grid.innerHTML='<div class="empty">Veri bulunamadı</div>';
+      return;
+  }
+  const emptyMsg = grid.querySelector('.empty');
+  if (emptyMsg) emptyMsg.remove();
+  
+  keys.forEach(key=>{
+    if(!allData[key]) return;
+    const ex=grid.querySelector(`.card[data-key="${key}"]`);
+    if(!ex) {
+        grid.appendChild(makeCard(key,allData[key])); 
+        setTimeout(()=>drawSpark(key),60);
+    } else {
+        const h=hist[key];
+        const last=h[h.length-1], first=h[0];
+        const isUp = last.a >= first.a;
+        ex.className=`card `+(isUp?'up':'dn')+(sel===key?' sel':'');
+        const st = ex.querySelector('.arrst');
+        if(st) { st.textContent = isUp?'↑':'↓'; st.className='arrst '+(isUp?'up':'dn'); }
+        document.getElementById(`a_${sparkId(key)}`).textContent = fmt(last.a);
+        setTimeout(()=>drawSpark(key),20);
+        // DOM'da yer değiştirmek ve sırayı javascript'in keys listesiyle aynı yapmak için eldeki objeyi bir daha append ederiz.
+        grid.appendChild(ex);
+    }
+  });
+}
+
+async function loadData(days) {
+  try {
+      const res = await fetch(`/api/data?days=${days}`);
+      if(!res.ok) throw new Error('API hatası');
+      const data = await res.json();
+      const newData = {}, newHist = {};
+      DOVIZ_KEYS = [];
+      for(const k of Object.keys(data)) {
+          const item = data[k];
+          newData[k] = { a: item.alis, s: item.satis, ad: item.alis_dir, sd: item.satis_dir, tur: item.tur };
+          DOVIZ_KEYS.push(k);
+          
+          newHist[k] = [];
+          if (item.history && item.history.alis) {
+            for(let i=0; i < item.history.alis.length; i++) {
+                newHist[k].push({ a: item.history.alis[i], s: item.history.satis[i], t: item.history.times[i] });
+            }
+          }
+      }
+      allData = newData; hist = newHist;
+      const now=new Date();
+      document.getElementById('upd').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      
+      runSearch();
+      
+      if(!sel || !allData[sel]){ 
+          if(DOVIZ_KEYS[0]) selectCard('USD'); 
+      } else { 
+          updateMainChart(sel); 
+      }
+      
+  } catch(e) { console.error(e); }
+  document.getElementById('loading').classList.add('out');
+}
+
+function init(){
+  initThemeAndFavs();
+  initChart();
+  loadData(currentDays);
+}
+
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
